@@ -4,7 +4,7 @@ Welcome to **BankUml**, a Java-based banking application designed to simulate co
 
 This project demonstrates the use of Object-Oriented Programming (OOP) principles, including **Inheritance**, **Encapsulation**, **Abstraction**, and **Polymorphism**, strictly following the provided UML diagram.
 
-## 📌 Features
+## 📌 Feature
 
 - **Account Management**: Create and manage multiple types of bank accounts.
 - **Transaction Handling**: Simulate payments and generate receipts.
