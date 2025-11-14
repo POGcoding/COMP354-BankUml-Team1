@@ -16,7 +16,7 @@ public class AccountSearchFilters {
     private AccountType accountType;
 
     // The follwing checks if the account number filter is provided
-    public boolean hadAccountNumber() {
+    public boolean hasAccountNumber() {
         return accountNumber != null && !accountNumber.isBlank();
     }
 
