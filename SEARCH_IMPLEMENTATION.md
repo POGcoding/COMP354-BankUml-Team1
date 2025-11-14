@@ -217,9 +217,3 @@ The returned `Page<AccountRow>` includes:
 - All account numbers in results are masked according to the policy
 - Customer users only see their own accounts (via OWNED_ONLY scope)
 - Teller/Admin users see all accounts (via ANY scope)
-
----
-
-## Questions?
-
-Contact Pierre-Olivier on Discord
