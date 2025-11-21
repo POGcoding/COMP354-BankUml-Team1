@@ -19,6 +19,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+
+// GUI entry point for the JavaFX version of BankUML.
+// Implements:
+//  - Role selection screen
+//  - Customer dashboard (masked balances)
+//  - Teller account search
+//  - Admin role management (mock, in-memory roles)
+
 public class MyBankApp extends Application {
 
     private UserContext userContext;
@@ -79,6 +87,8 @@ public class MyBankApp extends Application {
 
     // -------------------- PART 2: customer dashboard --------------------
 
+    // Shows all accounts for the current customer using mask policy
+
     private void showCustomerView(Stage stage) {
         Label title = new Label("Customer accounts");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
@@ -108,7 +118,7 @@ public class MyBankApp extends Application {
     }
 
     // -------------------- PART 3: teller search screen --------------------
-
+    // Allows tellers to search accounts by ID or type, no masking.
     private void showTellerView(Stage stage) {
         Label title = new Label("Teller account search");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
@@ -153,6 +163,8 @@ public class MyBankApp extends Application {
     }
 
     // -------------------- PART 4: admin role management --------------------
+
+    // Simple mock role assign/remove using an in-memory Map
 
     private void showAdminView(Stage stage) {
         Label title = new Label("Admin role management");
