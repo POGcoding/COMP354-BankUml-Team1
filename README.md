@@ -54,3 +54,22 @@ mvn dependency:copy-dependencies -DoutputDirectory=./libs
 ---
 
 Originally developed by [@shayanaminaei](https://github.com/shayanaminaei)
+
+To run the GUI, you must use Maven, because JavaFX requires module configuration that plain javac cannot handle.
+
+✅ 1. Make sure you have:
+
+Java 21 installed
+
+Maven installed (mvn -v should work)
+
+The JavaFX dependencies already included in pom.xml (controls, base, graphics)
+
+✅ 2. Compile the project
+
+From the project root:
+
+mvn clean compile
+
+✅ 3. Run the JavaFX application
+mvn javafx:run
