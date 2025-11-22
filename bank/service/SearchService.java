@@ -54,7 +54,7 @@ public class SearchService {
         AccountRepository.OwnershipScope scope = determineOwnershipScope(requester);
 
         // Step 2: The calls the repository with filters
-        Page<AccountProjection> projections = repository.search(filters, scope, pageRequest);
+        Page<AccountProjection> projections = repository.search(requester, filters, scope, pageRequest);
 
         // Step 3: This gets the masking policy for the user
         MaskingPolicy policy = authzService.maskingPolicyFor(requester);
@@ -103,7 +103,8 @@ public class SearchService {
             proj.getAccountId(), 
             policy.maskAccountNumber(proj.getAccountNumber()),
             proj.getAccountType(),
-            proj.getCustomerName())).collect(Collectors.toList());
+            proj.getCustomerName(),
+            proj.getBalance())).collect(Collectors.toList());
     }
 
     /*
@@ -149,6 +150,9 @@ public class SearchService {
         // Add account type filter if present
         if (filters.hasAccountType()) {
             sb.append("accountType=").append(filters.getAccountType()).append(" ");
+        }
+        if (filters.hasPlaceOfBirth()) {
+            sb.append("placeOfBirth=").append(filters.getPlaceOfBirth()).append(" ");
         }
         
         // Return "none" if no filters applied, otherwise return trimmed string

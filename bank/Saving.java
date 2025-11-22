@@ -4,6 +4,10 @@ public class Saving extends Account {
     public Saving(Customer customer) {
         super(customer);
     }
+
+    public Saving(String id, Customer customer, double balance) {
+        super(id, customer, balance);
+    }
     public void title(){
         System.out.println("**Payments**");
     };

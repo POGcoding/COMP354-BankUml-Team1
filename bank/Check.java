@@ -5,6 +5,11 @@ public class Check extends Account {
         super(customer);
 
     }
+
+    public Check(String id, Customer customer, double balance) {
+        super(id, customer, balance);
+    }
+
     public void title(){
         System.out.println("**Check Title**");
     }
@@ -21,4 +26,3 @@ public class Check extends Account {
         System.out.println("Check receipt for customer: " + customer.getName());    
     }
 }
-

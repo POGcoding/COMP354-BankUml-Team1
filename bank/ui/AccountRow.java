@@ -2,7 +2,7 @@ package bank.ui;
 
 public class AccountRow {
 
-    private final String accountId;
+    private final String accountId; // used for masked/unmasked account number
     private final String type;
     private final String balanceDisplay;
 

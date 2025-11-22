@@ -5,6 +5,10 @@ public class Card extends Account {
         super(customer);
     }
 
+    public Card(String id, Customer customer, double balance) {
+        super(id, customer, balance);
+    }
+
     @Override
     public void pay() {
         System.out.println("Card payment for: " + customer.getName());
@@ -15,4 +19,3 @@ public class Card extends Account {
         System.out.println("Card receipt for: " + customer.getName());
     }
 }
-

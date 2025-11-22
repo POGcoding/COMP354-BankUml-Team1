@@ -16,12 +16,6 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.30</version>
-        </dependency>
-
         <!-- JavaFX deps -->
         <dependency>
             <groupId>org.openjfx</groupId>

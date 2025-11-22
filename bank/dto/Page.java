@@ -1,14 +1,11 @@
 package bank.dto;
 
-import lombok.Getter;
 import java.util.List;
 
 /*
  * This is a generic page wrapper for paginated results
  * @param <T> type of items in the page
  */
-
-@Getter
 public class Page<T> {
     private final List<T> items;
     private final int page;
@@ -22,10 +19,23 @@ public class Page<T> {
         this.totalItems = totalItems;
     }
 
-    /*
-     * The following checks if this page has no results
-     */
     public boolean isEmpty() {
         return items.isEmpty();
+    }
+
+    public List<T> getItems() {
+        return items;
+    }
+
+    public int getPage() {
+        return page;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public long getTotalItems() {
+        return totalItems;
     }
 }

@@ -1,5 +1,14 @@
 package bank.ui;
 
+import bank.AppConfig;
+import bank.controller.AccountViewController;
+import bank.controller.RoleAdminController;
+import bank.controller.SearchController;
+import bank.dto.AccountSearchFilters;
+import bank.dto.AccountType;
+import bank.dto.Page;
+import bank.dto.PageRequest;
+import bank.dto.UserId;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -13,32 +22,49 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * JavaFX UI from teammate (keeps layout) wired to backend controllers.
+ */
 public class MyBankApp extends Application {
 
+    private static AccountViewController staticAccountViewController;
+    private static SearchController staticSearchController;
+    private static RoleAdminController staticRoleAdminController;
+
+    private AccountViewController accountViewController;
+    private SearchController searchController;
+    private RoleAdminController roleAdminController;
     private UserContext userContext;
-
-    // tiny in-memory “role database” for the admin screen
-    private final Map<String, String> assignedRoles = new HashMap<>();
-
-    // raw mock data used by both Customer & Teller views
-    private final List<RawAccount> mockAccounts = List.of(
-            new RawAccount("CHK-001", "Chequing", 1234.56),
-            new RawAccount("SAV-002", "Savings", 9876.54),
-            new RawAccount("CRD-003", "Credit", -250.00)
-    );
 
     public static void main(String[] args) {
         launch(args);
     }
 
+    /** Allow wiring controllers before launch. */
+    public static void setControllers(AccountViewController avc,
+                                      SearchController sc,
+                                      RoleAdminController rac) {
+        staticAccountViewController = avc;
+        staticSearchController = sc;
+        staticRoleAdminController = rac;
+    }
+
     @Override
     public void start(Stage stage) {
+        if (staticAccountViewController == null || staticSearchController == null || staticRoleAdminController == null) {
+            AppConfig config = new AppConfig();
+            accountViewController = config.getAccountViewController();
+            searchController = config.getSearchController();
+            roleAdminController = config.getRoleAdminController();
+        } else {
+            accountViewController = staticAccountViewController;
+            searchController = staticSearchController;
+            roleAdminController = staticRoleAdminController;
+        }
+
         stage.setTitle("MyBankUML");
         showRoleSelection(stage);
         stage.show();
@@ -55,12 +81,12 @@ public class MyBankApp extends Application {
         Button adminBtn    = new Button("Admin");
 
         customerBtn.setOnAction(e -> {
-            userContext = new UserContext("CUSTOMER", "cust-123");
+            userContext = new UserContext("CUSTOMER", "customer");
             showCustomerView(stage);
         });
 
         tellerBtn.setOnAction(e -> {
-            userContext = new UserContext("TELLER", "teller-001");
+            userContext = new UserContext("TELLER", "teller");
             showTellerView(stage);
         });
 
@@ -85,8 +111,7 @@ public class MyBankApp extends Application {
 
         TableView<AccountRow> table = createAccountTable();
 
-        // show all accounts for this user (mocked) with CUSTOMER masking
-        table.setItems(buildRowsForRole(userContext.role(), null));
+        table.setItems(loadCustomerAccounts());
 
         Button back = new Button("Back");
         back.setOnAction(e -> showRoleSelection(stage));
@@ -123,12 +148,11 @@ public class MyBankApp extends Application {
 
         TableView<AccountRow> table = createAccountTable();
 
-        // initial view: show all accounts, masking based on TELLER role (no mask)
-        table.setItems(buildRowsForRole(userContext.role(), null));
+        table.setItems(runSearch(queryField.getText()));
 
         searchBtn.setOnAction(e -> {
             String q = queryField.getText();
-            table.setItems(buildRowsForRole(userContext.role(), q));
+            table.setItems(runSearch(q));
         });
 
         Button back = new Button("Back");
@@ -158,11 +182,9 @@ public class MyBankApp extends Application {
         Label title = new Label("Admin role management");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        // user id input
         TextField userIdField = new TextField();
         userIdField.setPromptText("Enter user ID (e.g. cust-123)");
 
-        // role combo box
         ComboBox<String> roleBox = new ComboBox<>();
         roleBox.getItems().addAll("CUSTOMER", "TELLER", "ADMIN");
         roleBox.setValue("CUSTOMER");
@@ -176,47 +198,37 @@ public class MyBankApp extends Application {
         Button assignBtn = new Button("Assign role");
         Button removeBtn = new Button("Remove role");
 
-        // log area
         ListView<String> logView = new ListView<>();
         logView.setPrefHeight(180);
 
-        // Assign role logic
         assignBtn.setOnAction(e -> {
             String userId = userIdField.getText().trim();
             String role = roleBox.getValue();
-
             if (userId.isEmpty()) {
                 logView.getItems().add("Please enter a user ID before assigning.");
                 return;
             }
-
-            String previous = assignedRoles.put(userId, role);
-
-            if (previous == null) {
-                logView.getItems().add("Assigned role " + role + " to user " + userId + " (mock).");
-            } else if (previous.equals(role)) {
-                logView.getItems().add("User " + userId + " already had role " + role + " (no change).");
-            } else {
-                logView.getItems().add("Changed role for user " + userId +
-                        " from " + previous + " to " + role + " (mock).");
+            try {
+                roleAdminController.assignRole(new UserId(userContext.userId()), new UserId(userId), role);
+                logView.getItems().add("Assigned role " + role + " to user " + userId + ".");
+                refreshRoles(logView, userId);
+            } catch (Exception ex) {
+                logView.getItems().add("Error: " + ex.getMessage());
             }
         });
 
-        // Remove role logic
         removeBtn.setOnAction(e -> {
             String userId = userIdField.getText().trim();
-
             if (userId.isEmpty()) {
                 logView.getItems().add("Please enter a user ID before removing.");
                 return;
             }
-
-            String previous = assignedRoles.remove(userId);
-
-            if (previous == null) {
-                logView.getItems().add("User " + userId + " had no role assigned (nothing to remove).");
-            } else {
-                logView.getItems().add("Removed role " + previous + " from user " + userId + " (mock).");
+            try {
+                roleAdminController.removeRole(new UserId(userContext.userId()), new UserId(userId), roleBox.getValue());
+                logView.getItems().add("Removed role " + roleBox.getValue() + " from user " + userId + ".");
+                refreshRoles(logView, userId);
+            } catch (Exception ex) {
+                logView.getItems().add("Error: " + ex.getMessage());
             }
         });
 
@@ -230,7 +242,7 @@ public class MyBankApp extends Application {
                 formRow1,
                 formRow2,
                 buttonRow,
-                new Label("Activity log (mock actions only):"),
+                new Label("Activity log:"),
                 logView
         );
         center.setPadding(new Insets(10, 0, 0, 0));
@@ -252,7 +264,6 @@ public class MyBankApp extends Application {
 
     // -------------------- shared helpers --------------------
 
-    /** Create the three-column table used by both customer & teller. */
     private TableView<AccountRow> createAccountTable() {
         TableView<AccountRow> table = new TableView<>();
 
@@ -275,38 +286,56 @@ public class MyBankApp extends Application {
         return table;
     }
 
-    /**
-     * Build AccountRow list for the given role, optionally filtered by query.
-     * Query matches accountId or type (case-insensitive).
-     */
-    private ObservableList<AccountRow> buildRowsForRole(String role, String query) {
-        String q = (query == null) ? "" : query.trim().toLowerCase(Locale.ROOT);
-
-        List<AccountRow> rows = mockAccounts.stream()
-                .filter(acc ->
-                        q.isEmpty()
-                                || acc.id.toLowerCase(Locale.ROOT).contains(q)
-                                || acc.type.toLowerCase(Locale.ROOT).contains(q)
-                )
-                .map(acc -> {
-                    String displayBalance = MaskingPolicy.maskBalance(acc.balance, role);
-                    return new AccountRow(acc.id, acc.type, displayBalance);
-                })
-                .collect(Collectors.toList());
-
-        return FXCollections.observableArrayList(rows);
+    private ObservableList<AccountRow> loadCustomerAccounts() {
+        try {
+            Page<bank.dto.AccountRow> page = accountViewController.listAccounts(
+                    new UserId(userContext.userId()),
+                    new PageRequest(0, 50));
+            return mapRows(page);
+        } catch (Exception ex) {
+            return FXCollections.observableArrayList();
+        }
     }
 
-    // raw data backing our mock accounts
-    private static class RawAccount {
-        final String id;
-        final String type;
-        final double balance;
+    private ObservableList<AccountRow> runSearch(String query) {
+        try {
+            AccountSearchFilters filters = new AccountSearchFilters();
+            if (query != null && !query.isBlank()) {
+                String q = query.trim();
+                filters.setAccountNumber(q);
+                try {
+                    filters.setAccountType(AccountType.valueOf(q.toUpperCase(Locale.ROOT)));
+                } catch (IllegalArgumentException ignored) {
+                    // not an account type
+                }
+            }
+            Page<bank.dto.AccountRow> page = searchController.search(
+                    new UserId(userContext.userId()),
+                    filters,
+                    new PageRequest(0, 50));
+            return mapRows(page);
+        } catch (Exception ex) {
+            return FXCollections.observableArrayList();
+        }
+    }
 
-        RawAccount(String id, String type, double balance) {
-            this.id = id;
-            this.type = type;
-            this.balance = balance;
+    private ObservableList<AccountRow> mapRows(Page<bank.dto.AccountRow> page) {
+        return FXCollections.observableArrayList(
+                page.getItems().stream()
+                        .map(r -> new AccountRow(
+                                r.getMaskedAccountNumber(), // show masked/unmasked per policy
+                                r.getAccountType().name(),
+                                String.format("$%.2f", r.getBalance())))
+                        .collect(Collectors.toList())
+        );
+    }
+
+    private void refreshRoles(ListView<String> logView, String userId) {
+        try {
+            var roles = roleAdminController.rolesFor(new UserId(userContext.userId()), new UserId(userId));
+            logView.getItems().add("Roles for " + userId + ": " + roles);
+        } catch (Exception ex) {
+            logView.getItems().add("Error: " + ex.getMessage());
         }
     }
 }

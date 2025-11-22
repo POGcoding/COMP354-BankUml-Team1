@@ -1,19 +1,10 @@
 package bank.dto;
 
-import lombok.Getter;
-import lombok.Setter;
-
-/*
- * These are the Search Filters with AND logic
- * All the non-null/non-blank filters are combined with logical AND
- */
-
-@Getter
-@Setter
 public class AccountSearchFilters {
     private String accountNumber;
     private String customerName;
     private AccountType accountType;
+    private String placeOfBirth;
 
     // The follwing checks if the account number filter is provided
     public boolean hasAccountNumber() {
@@ -28,5 +19,41 @@ public class AccountSearchFilters {
     // The following checks if the account type filter is provided
     public boolean hasAccountType() {
         return accountType != null;
+    }
+
+    public boolean hasPlaceOfBirth() {
+        return placeOfBirth != null && !placeOfBirth.isBlank();
+    }
+
+    public String getAccountNumber() {
+        return accountNumber;
+    }
+
+    public void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public AccountType getAccountType() {
+        return accountType;
+    }
+
+    public void setAccountType(AccountType accountType) {
+        this.accountType = accountType;
+    }
+
+    public String getPlaceOfBirth() {
+        return placeOfBirth;
+    }
+
+    public void setPlaceOfBirth(String placeOfBirth) {
+        this.placeOfBirth = placeOfBirth;
     }
 }

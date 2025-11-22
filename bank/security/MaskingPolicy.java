@@ -15,13 +15,20 @@ public class MaskingPolicy {
 
     private static String maskPartial(Customer customer) {
         return "Customer: " + customer.getName() + "\n"
-                + "SSN: ***-**-" + customer.getSSN().substring(7) + "\n"
+                + "ID: ****" + safeTail(customer.getId()) + "\n"
                 + "Balance: [hidden]";
     }
 
     private static String maskOwn(Customer customer) {
         return "Customer: " + customer.getName() + "\n"
-                + "SSN: *********\n"
+                + "ID: ********\n"
                 + "Balance: [hidden]";
+    }
+
+    private static String safeTail(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= 4 ? value : value.substring(value.length() - 4);
     }
 }

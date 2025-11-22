@@ -1,17 +1,23 @@
 package bank;
 
-import lombok.Getter;
-
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
-@Getter
 public abstract class Account {
-    protected Customer customer;
-    protected List<Transaction> transactions;
+    protected final String id;
+    protected final Customer customer;
+    protected final List<Transaction> transactions;
+    protected double balance;
 
     public Account(Customer customer) {
+        this(UUID.randomUUID().toString(), customer, 0.0);
+    }
+
+    public Account(String id, Customer customer, double balance) {
+        this.id = id;
         this.customer = customer;
+        this.balance = balance;
         this.transactions = new ArrayList<>();
     }
 
@@ -19,7 +25,26 @@ public abstract class Account {
         transactions.add(transaction);
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public Customer getCustomer() {
+        return customer;
+    }
+
+    public List<Transaction> getTransactions() {
+        return transactions;
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public void setBalance(double balance) {
+        this.balance = balance;
+    }
+
     public abstract void pay();
     public abstract void receipt();
 }
-
