@@ -1,14 +1,9 @@
 package bank.ui;
 
-import bank.AppConfig;
 import bank.controller.AccountViewController;
-import bank.controller.RoleAdminController;
 import bank.controller.SearchController;
-import bank.dto.AccountSearchFilters;
-import bank.dto.AccountType;
-import bank.dto.Page;
-import bank.dto.PageRequest;
-import bank.dto.UserId;
+import bank.controller.RoleAdminController;
+
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -17,60 +12,114 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * JavaFX UI from teammate (keeps layout) wired to backend controllers.
+ * JavaFX GUI entry point for BankUML.
+ * Screens:
+ *  - Simulated login
+ *  - Role selection
+ *  - Customer account dashboard (masked balances)
+ *  - Teller account search
+ *  - Admin role management (mock, in-memory)
  */
 public class MyBankApp extends Application {
 
-    private static AccountViewController staticAccountViewController;
-    private static SearchController staticSearchController;
-    private static RoleAdminController staticRoleAdminController;
-
-    private AccountViewController accountViewController;
-    private SearchController searchController;
-    private RoleAdminController roleAdminController;
+    // Logged-in user (simulated)
     private UserContext userContext;
+
+    // Controllers (wired by Main.java; not yet used in the mock UI)
+    private static AccountViewController accountViewController;
+    private static SearchController      searchController;
+    private static RoleAdminController   roleAdminController;
+
+
+    // Mock "role assignments" for the admin screen
+    private final Map<String, String> assignedRoles = new HashMap<>();
+
+    // Mock backing data used by Customer & Teller views
+    private final List<RawAccount> mockAccounts = List.of(
+            new RawAccount("CHK-001", "Chequing", 1234.56),
+            new RawAccount("SAV-002", "Savings", 9876.54),
+            new RawAccount("CRD-003", "Credit",  -250.00)
+    );
+
+    // ----- wiring from Main.java -----
+
+    public static void setControllers(AccountViewController accountViewController,
+                                      SearchController searchController,
+                                      RoleAdminController roleAdminController) {
+        MyBankApp.accountViewController = accountViewController;
+        MyBankApp.searchController = searchController;
+        MyBankApp.roleAdminController = roleAdminController; 
+    }      
+                                      
+
+        // Currently unused; UI still uses mock data.
+        // Later you can swap mockAccounts / assignedRoles for real controller calls.
+    
+
+    // ----- standard JavaFX entry point -----
 
     public static void main(String[] args) {
         launch(args);
     }
 
-    /** Allow wiring controllers before launch. */
-    public static void setControllers(AccountViewController avc,
-                                      SearchController sc,
-                                      RoleAdminController rac) {
-        staticAccountViewController = avc;
-        staticSearchController = sc;
-        staticRoleAdminController = rac;
-    }
-
     @Override
     public void start(Stage stage) {
-        if (staticAccountViewController == null || staticSearchController == null || staticRoleAdminController == null) {
-            AppConfig config = new AppConfig();
-            accountViewController = config.getAccountViewController();
-            searchController = config.getSearchController();
-            roleAdminController = config.getRoleAdminController();
-        } else {
-            accountViewController = staticAccountViewController;
-            searchController = staticSearchController;
-            roleAdminController = staticRoleAdminController;
-        }
-
         stage.setTitle("MyBankUML");
-        showRoleSelection(stage);
+        showLogin(stage);     // first screen: simulated login
         stage.show();
     }
 
-    // -------------------- PART 1: role selection --------------------
+    // ========================================================================
+    // 1) Simulated login
+    // ========================================================================
+
+    private void showLogin(Stage stage) {
+        Label title = new Label("Login (simulated)");
+        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        TextField userIdField = new TextField();
+        userIdField.setPromptText("Enter user ID (e.g. cust-123)");
+
+        PasswordField pwField = new PasswordField();
+        pwField.setPromptText("Password (ignored)");
+
+        Label message = new Label();
+
+        Button continueBtn = new Button("Continue");
+        continueBtn.setOnAction(e -> {
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                message.setText("Please enter a user ID.");
+                return;
+            }
+
+            // Store a simple context; role will be chosen on next screen
+            userContext = new UserContext(id, "CUSTOMER");
+
+            showRoleSelection(stage);
+        });
+
+        VBox root = new VBox(10, title, userIdField, pwField, continueBtn, message);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.CENTER);
+
+        stage.setScene(new Scene(root, 420, 260));
+    }
+
+    // ========================================================================
+    // 2) Role selection
+    // ========================================================================
 
     private void showRoleSelection(Stage stage) {
         Label title = new Label("Select role");
@@ -80,103 +129,81 @@ public class MyBankApp extends Application {
         Button tellerBtn   = new Button("Teller");
         Button adminBtn    = new Button("Admin");
 
-        customerBtn.setOnAction(e -> {
-            userContext = new UserContext("CUSTOMER", "customer");
-            showCustomerView(stage);
-        });
+        customerBtn.setPrefWidth(140);
+        tellerBtn.setPrefWidth(140);
+        adminBtn.setPrefWidth(140);
 
-        tellerBtn.setOnAction(e -> {
-            userContext = new UserContext("TELLER", "teller");
-            showTellerView(stage);
-        });
-
-        adminBtn.setOnAction(e -> {
-            userContext = new UserContext("ADMIN", "admin");
-            showAdminView(stage);
-        });
+        customerBtn.setOnAction(e -> showCustomerView(stage));
+        tellerBtn.setOnAction(e -> showTellerView(stage));
+        adminBtn.setOnAction(e -> showAdminView(stage));
 
         VBox root = new VBox(15, title, customerBtn, tellerBtn, adminBtn);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(root, 400, 250);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 400, 250));
     }
 
-    // -------------------- PART 2: customer dashboard --------------------
+    // ========================================================================
+    // 3) Customer dashboard
+    // ========================================================================
 
     private void showCustomerView(Stage stage) {
         Label title = new Label("Customer accounts");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        TableView<AccountRow> table = createAccountTable();
+        TableView<AccountRow> table = buildAccountTable();
+        table.setItems(buildRowsForRole("CUSTOMER", null)); // masked balances
 
-        table.setItems(loadCustomerAccounts());
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
-
-        HBox bottomBar = new HBox(back);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER_LEFT);
-        bottomBar.setSpacing(10);
-
-        BorderPane root = new BorderPane();
+        VBox root = new VBox(10, title, table, backBtn);
         root.setPadding(new Insets(15));
-        root.setTop(title);
-        BorderPane.setAlignment(title, Pos.CENTER);
-        root.setCenter(table);
-        root.setBottom(bottomBar);
+        root.setAlignment(Pos.TOP_CENTER);
 
-        Scene scene = new Scene(root, 520, 320);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 640, 420));
     }
 
-    // -------------------- PART 3: teller search screen --------------------
+    // ========================================================================
+    // 4) Teller search view
+    // ========================================================================
 
     private void showTellerView(Stage stage) {
         Label title = new Label("Teller account search");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         TextField queryField = new TextField();
-        queryField.setPromptText("Search by account ID or type...");
+        queryField.setPromptText("Search by account ID or type");
+
         Button searchBtn = new Button("Search");
 
-        HBox searchBar = new HBox(10, new Label("Query:"), queryField, searchBtn);
+        TableView<AccountRow> table = buildAccountTable();
+
+        HBox searchBar = new HBox(8, new Label("Query:"), queryField, searchBtn);
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(10, 0, 10, 0));
 
-        TableView<AccountRow> table = createAccountTable();
-
-        table.setItems(runSearch(queryField.getText()));
+        // initially show all accounts (unfiltered)
+        table.setItems(buildRowsForRole("TELLER", null));
 
         searchBtn.setOnAction(e -> {
             String q = queryField.getText();
-            table.setItems(runSearch(q));
+            table.setItems(buildRowsForRole("TELLER", q));
         });
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
 
-        HBox bottomBar = new HBox(back);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER_LEFT);
-
-        VBox top = new VBox(title, searchBar);
-        top.setSpacing(5);
-
-        BorderPane root = new BorderPane();
+        VBox root = new VBox(10, title, searchBar, table, backBtn);
         root.setPadding(new Insets(15));
-        root.setTop(top);
-        BorderPane.setAlignment(top, Pos.CENTER);
-        root.setCenter(table);
-        root.setBottom(bottomBar);
+        root.setAlignment(Pos.TOP_LEFT);
 
-        Scene scene = new Scene(root, 650, 350);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 720, 450));
     }
 
-    // -------------------- PART 4: admin role management --------------------
+    // ========================================================================
+    // 5) Admin role management (mock)
+    // ========================================================================
 
     private void showAdminView(Stage stage) {
         Label title = new Label("Admin role management");
@@ -189,82 +216,76 @@ public class MyBankApp extends Application {
         roleBox.getItems().addAll("CUSTOMER", "TELLER", "ADMIN");
         roleBox.setValue("CUSTOMER");
 
-        HBox formRow1 = new HBox(10, new Label("User ID:"), userIdField);
-        formRow1.setAlignment(Pos.CENTER_LEFT);
-
-        HBox formRow2 = new HBox(10, new Label("Role:"), roleBox);
-        formRow2.setAlignment(Pos.CENTER_LEFT);
-
         Button assignBtn = new Button("Assign role");
         Button removeBtn = new Button("Remove role");
 
-        ListView<String> logView = new ListView<>();
-        logView.setPrefHeight(180);
+        TextArea logArea = new TextArea();
+        logArea.setEditable(false);
+        logArea.setPrefRowCount(8);
 
         assignBtn.setOnAction(e -> {
-            String userId = userIdField.getText().trim();
-            String role = roleBox.getValue();
-            if (userId.isEmpty()) {
-                logView.getItems().add("Please enter a user ID before assigning.");
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                logArea.appendText("Please enter a user ID before assigning.\n");
                 return;
             }
-            try {
-                roleAdminController.assignRole(new UserId(userContext.userId()), new UserId(userId), role);
-                logView.getItems().add("Assigned role " + role + " to user " + userId + ".");
-                refreshRoles(logView, userId);
-            } catch (Exception ex) {
-                logView.getItems().add("Error: " + ex.getMessage());
+
+            String newRole = roleBox.getValue();
+            String oldRole = assignedRoles.get(id);
+
+            if (oldRole == null) {
+                assignedRoles.put(id, newRole);
+                logArea.appendText("Assigned role " + newRole + " to user " + id + " (mock).\n");
+            } else if (oldRole.equals(newRole)) {
+                logArea.appendText("User " + id + " already had role " + newRole + " (no change).\n");
+            } else {
+                assignedRoles.put(id, newRole);
+                logArea.appendText("Changed role for user " + id + " from " + oldRole +
+                        " to " + newRole + " (mock).\n");
             }
         });
 
         removeBtn.setOnAction(e -> {
-            String userId = userIdField.getText().trim();
-            if (userId.isEmpty()) {
-                logView.getItems().add("Please enter a user ID before removing.");
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                logArea.appendText("Please enter a user ID before removing.\n");
                 return;
             }
-            try {
-                roleAdminController.removeRole(new UserId(userContext.userId()), new UserId(userId), roleBox.getValue());
-                logView.getItems().add("Removed role " + roleBox.getValue() + " from user " + userId + ".");
-                refreshRoles(logView, userId);
-            } catch (Exception ex) {
-                logView.getItems().add("Error: " + ex.getMessage());
+
+            String removed = assignedRoles.remove(id);
+            if (removed == null) {
+                logArea.appendText("User " + id + " had no role assigned (nothing to remove).\n");
+            } else {
+                logArea.appendText("Removed role " + removed + " from user " + id + " (mock).\n");
             }
         });
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
-
-        HBox buttonRow = new HBox(10, assignBtn, removeBtn);
-        buttonRow.setAlignment(Pos.CENTER_LEFT);
-
-        VBox center = new VBox(10,
-                formRow1,
-                formRow2,
-                buttonRow,
-                new Label("Activity log:"),
-                logView
+        HBox form = new HBox(10,
+                new Label("User ID:"), userIdField,
+                new Label("Role:"), roleBox,
+                assignBtn, removeBtn
         );
-        center.setPadding(new Insets(10, 0, 0, 0));
+        form.setAlignment(Pos.CENTER_LEFT);
 
-        BorderPane root = new BorderPane();
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
+
+        VBox root = new VBox(10, title, form,
+                new Label("Activity log (mock actions only):"),
+                logArea,
+                backBtn
+        );
         root.setPadding(new Insets(15));
-        root.setTop(title);
-        BorderPane.setAlignment(title, Pos.CENTER);
-        root.setCenter(center);
+        root.setAlignment(Pos.TOP_LEFT);
 
-        HBox bottom = new HBox(10, back);
-        bottom.setAlignment(Pos.CENTER_LEFT);
-        bottom.setPadding(new Insets(10, 0, 0, 0));
-        root.setBottom(bottom);
-
-        Scene scene = new Scene(root, 600, 380);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 700, 420));
     }
 
-    // -------------------- shared helpers --------------------
+    // ========================================================================
+    // Shared helpers
+    // ========================================================================
 
-    private TableView<AccountRow> createAccountTable() {
+    private TableView<AccountRow> buildAccountTable() {
         TableView<AccountRow> table = new TableView<>();
 
         TableColumn<AccountRow, String> idCol = new TableColumn<>("Account ID");
@@ -279,63 +300,44 @@ public class MyBankApp extends Application {
         balCol.setCellValueFactory(new PropertyValueFactory<>("balanceDisplay"));
         balCol.setPrefWidth(150);
 
-        table.getColumns().add(idCol);
-        table.getColumns().add(typeCol);
-        table.getColumns().add(balCol);
+        table.getColumns().addAll(idCol, typeCol, balCol);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         return table;
     }
 
-    private ObservableList<AccountRow> loadCustomerAccounts() {
-        try {
-            Page<bank.dto.AccountRow> page = accountViewController.listAccounts(
-                    new UserId(userContext.userId()),
-                    new PageRequest(0, 50));
-            return mapRows(page);
-        } catch (Exception ex) {
-            return FXCollections.observableArrayList();
-        }
+    /**
+     * Build AccountRow list for the given role, optionally filtered by query.
+     * Query matches accountId or type (case-insensitive).
+     */
+    private ObservableList<AccountRow> buildRowsForRole(String role, String query) {
+        String q = (query == null) ? "" : query.trim().toLowerCase(Locale.ROOT);
+
+        List<AccountRow> rows = mockAccounts.stream()
+                .filter(acc ->
+                        q.isEmpty()
+                                || acc.id.toLowerCase(Locale.ROOT).contains(q)
+                                || acc.type.toLowerCase(Locale.ROOT).contains(q)
+                )
+                .map(acc -> {
+                    String displayBalance = MaskingPolicy.maskBalance(acc.balance, role);
+                    return new AccountRow(acc.id, acc.type, displayBalance);
+                })
+                .collect(Collectors.toList());
+
+        return FXCollections.observableArrayList(rows);
     }
 
-    private ObservableList<AccountRow> runSearch(String query) {
-        try {
-            AccountSearchFilters filters = new AccountSearchFilters();
-            if (query != null && !query.isBlank()) {
-                String q = query.trim();
-                filters.setAccountNumber(q);
-                try {
-                    filters.setAccountType(AccountType.valueOf(q.toUpperCase(Locale.ROOT)));
-                } catch (IllegalArgumentException ignored) {
-                    // not an account type
-                }
-            }
-            Page<bank.dto.AccountRow> page = searchController.search(
-                    new UserId(userContext.userId()),
-                    filters,
-                    new PageRequest(0, 50));
-            return mapRows(page);
-        } catch (Exception ex) {
-            return FXCollections.observableArrayList();
-        }
-    }
+    // backing data for mockAccounts
+    private static class RawAccount {
+        final String id;
+        final String type;
+        final double balance;
 
-    private ObservableList<AccountRow> mapRows(Page<bank.dto.AccountRow> page) {
-        return FXCollections.observableArrayList(
-                page.getItems().stream()
-                        .map(r -> new AccountRow(
-                                r.getMaskedAccountNumber(), // show masked/unmasked per policy
-                                r.getAccountType().name(),
-                                String.format("$%.2f", r.getBalance())))
-                        .collect(Collectors.toList())
-        );
-    }
-
-    private void refreshRoles(ListView<String> logView, String userId) {
-        try {
-            var roles = roleAdminController.rolesFor(new UserId(userContext.userId()), new UserId(userId));
-            logView.getItems().add("Roles for " + userId + ": " + roles);
-        } catch (Exception ex) {
-            logView.getItems().add("Error: " + ex.getMessage());
+        RawAccount(String id, String type, double balance) {
+            this.id = id;
+            this.type = type;
+            this.balance = balance;
         }
     }
 }
