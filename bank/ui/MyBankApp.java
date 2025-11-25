@@ -12,6 +12,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.scene.layout.GridPane;
 
 import java.util.HashMap;
 import java.util.List;
@@ -19,9 +20,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-
 // GUI entry point for the JavaFX version of BankUML.
 // Implements:
+//  - Login/simulated login
 //  - Role selection screen
 //  - Customer dashboard (masked balances)
 //  - Teller account search
@@ -29,17 +30,18 @@ import java.util.stream.Collectors;
 
 public class MyBankApp extends Application {
 
+    // we'll use this later when we actually care about the user
     private UserContext userContext;
 
-    // tiny in-memory “role database” for the admin screen
-    private final Map<String, String> assignedRoles = new HashMap<>();
-
-    // raw mock data used by both Customer & Teller views
+    // Mock accounts for now
     private final List<RawAccount> mockAccounts = List.of(
             new RawAccount("CHK-001", "Chequing", 1234.56),
             new RawAccount("SAV-002", "Savings", 9876.54),
             new RawAccount("CRD-003", "Credit", -250.00)
     );
+
+    // In-memory “role assignments” for admin mock
+    private final Map<String, String> userRoles = new HashMap<>();
 
     public static void main(String[] args) {
         launch(args);
@@ -48,224 +50,235 @@ public class MyBankApp extends Application {
     @Override
     public void start(Stage stage) {
         stage.setTitle("MyBankUML");
-        showRoleSelection(stage);
+        showLogin(stage);     // ✅ login first
         stage.show();
     }
 
-    // -------------------- PART 1: role selection --------------------
-
-    private void showRoleSelection(Stage stage) {
-        Label title = new Label("Select role");
+    // ----------------------------
+    // 1) Simulated Login Screen
+    // ----------------------------
+    private void showLogin(Stage stage) {
+        Label title = new Label("Login (simulated)");
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
 
+        TextField userIdField = new TextField();
+        userIdField.setPromptText("Enter user ID (e.g. cust-123)");
+
+        PasswordField pwField = new PasswordField();
+        pwField.setPromptText("Password (ignored)");
+
+        Label msg = new Label();
+
+        Button cont = new Button("Continue");
+
+        cont.setOnAction(e -> {
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                msg.setText("Please enter a user ID.");
+                return;
+            }
+
+            // store into context (simulated login)
+            userContext = new UserContext(id, "CUSTOMER"); // role overwritten later
+
+            showRoleSelection(stage);
+        });
+
+        VBox root = new VBox(10, title, userIdField, pwField, cont, msg);
+        root.setPadding(new Insets(20));
+        root.setAlignment(Pos.CENTER);
+
+        stage.setScene(new Scene(root, 420, 260));
+    }
+
+    // ----------------------------
+    // 2) Role Selection Screen
+    // ----------------------------
+    private void showRoleSelection(Stage stage) {
+        Label label = new Label("Select role");
+        label.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
         Button customerBtn = new Button("Customer");
-        Button tellerBtn   = new Button("Teller");
-        Button adminBtn    = new Button("Admin");
+        Button tellerBtn = new Button("Teller");
+        Button adminBtn = new Button("Admin");
+
+        customerBtn.setPrefWidth(120);
+        tellerBtn.setPrefWidth(120);
+        adminBtn.setPrefWidth(120);
 
         customerBtn.setOnAction(e -> {
-            userContext = new UserContext("CUSTOMER", "cust-123");
+            setRole("CUSTOMER");
             showCustomerView(stage);
         });
 
         tellerBtn.setOnAction(e -> {
-            userContext = new UserContext("TELLER", "teller-001");
-            showTellerView(stage);
+            setRole("TELLER");
+            showTellerSearch(stage);
         });
 
         adminBtn.setOnAction(e -> {
-            userContext = new UserContext("ADMIN", "admin");
-            showAdminView(stage);
+            setRole("ADMIN");
+            showAdminRoleMgmt(stage);
         });
 
-        VBox root = new VBox(15, title, customerBtn, tellerBtn, adminBtn);
+        VBox root = new VBox(12, label, customerBtn, tellerBtn, adminBtn);
         root.setPadding(new Insets(20));
         root.setAlignment(Pos.CENTER);
 
-        Scene scene = new Scene(root, 400, 250);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 420, 300));
     }
 
-    // -------------------- PART 2: customer dashboard --------------------
+    private void setRole(String role) {
+        if (userContext == null) userContext = new UserContext("unknown", role);
+        userContext = new UserContext(userContext.userId(), role);
+        userRoles.putIfAbsent(userContext.userId(), role); // seed mock
+    }
 
-    // Shows all accounts for the current customer using mask policy
-
+    // ----------------------------
+    // 3) Customer View
+    // ----------------------------
     private void showCustomerView(Stage stage) {
         Label title = new Label("Customer accounts");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        TableView<AccountRow> table = createAccountTable();
+        TableView<AccountRow> table = buildAccountTable(false);
 
-        // show all accounts for this user (mocked) with CUSTOMER masking
-        table.setItems(buildRowsForRole(userContext.role(), null));
+        ObservableList<AccountRow> rows = buildRowsForRole("CUSTOMER", null);
+        table.setItems(rows);
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
 
-        HBox bottomBar = new HBox(back);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER_LEFT);
-        bottomBar.setSpacing(10);
-
-        BorderPane root = new BorderPane();
+        VBox root = new VBox(10, title, table, backBtn);
         root.setPadding(new Insets(15));
-        root.setTop(title);
-        BorderPane.setAlignment(title, Pos.CENTER);
-        root.setCenter(table);
-        root.setBottom(bottomBar);
+        root.setAlignment(Pos.TOP_CENTER);
 
-        Scene scene = new Scene(root, 520, 320);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 640, 420));
     }
 
-    // -------------------- PART 3: teller search screen --------------------
-    // Allows tellers to search accounts by ID or type, no masking.
-    private void showTellerView(Stage stage) {
+    // ----------------------------
+    // 4) Teller Search View
+    // ----------------------------
+    private void showTellerSearch(Stage stage) {
         Label title = new Label("Teller account search");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
         TextField queryField = new TextField();
-        queryField.setPromptText("Search by account ID or type...");
+        queryField.setPromptText("Search by Account ID or type");
+
         Button searchBtn = new Button("Search");
 
-        HBox searchBar = new HBox(10, new Label("Query:"), queryField, searchBtn);
+        HBox searchBar = new HBox(8, new Label("Query:"), queryField, searchBtn);
         searchBar.setAlignment(Pos.CENTER_LEFT);
-        searchBar.setPadding(new Insets(10, 0, 10, 0));
 
-        TableView<AccountRow> table = createAccountTable();
+        TableView<AccountRow> table = buildAccountTable(true);
 
-        // initial view: show all accounts, masking based on TELLER role (no mask)
-        table.setItems(buildRowsForRole(userContext.role(), null));
+        // initial list
+        table.setItems(buildRowsForRole("TELLER", ""));
 
         searchBtn.setOnAction(e -> {
             String q = queryField.getText();
-            table.setItems(buildRowsForRole(userContext.role(), q));
+            table.setItems(buildRowsForRole("TELLER", q));
         });
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
 
-        HBox bottomBar = new HBox(back);
-        bottomBar.setPadding(new Insets(10));
-        bottomBar.setAlignment(Pos.CENTER_LEFT);
-
-        VBox top = new VBox(title, searchBar);
-        top.setSpacing(5);
-
-        BorderPane root = new BorderPane();
+        VBox root = new VBox(10, title, searchBar, table, backBtn);
         root.setPadding(new Insets(15));
-        root.setTop(top);
-        BorderPane.setAlignment(top, Pos.CENTER);
-        root.setCenter(table);
-        root.setBottom(bottomBar);
+        root.setAlignment(Pos.TOP_LEFT);
 
-        Scene scene = new Scene(root, 650, 350);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 720, 450));
     }
 
-    // -------------------- PART 4: admin role management --------------------
-
-    // Simple mock role assign/remove using an in-memory Map
-
-    private void showAdminView(Stage stage) {
+    // ----------------------------
+    // 5) Admin Role Management View
+    // ----------------------------
+    private void showAdminRoleMgmt(Stage stage) {
         Label title = new Label("Admin role management");
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        // user id input
         TextField userIdField = new TextField();
         userIdField.setPromptText("Enter user ID (e.g. cust-123)");
 
-        // role combo box
         ComboBox<String> roleBox = new ComboBox<>();
         roleBox.getItems().addAll("CUSTOMER", "TELLER", "ADMIN");
         roleBox.setValue("CUSTOMER");
 
-        HBox formRow1 = new HBox(10, new Label("User ID:"), userIdField);
-        formRow1.setAlignment(Pos.CENTER_LEFT);
-
-        HBox formRow2 = new HBox(10, new Label("Role:"), roleBox);
-        formRow2.setAlignment(Pos.CENTER_LEFT);
-
         Button assignBtn = new Button("Assign role");
         Button removeBtn = new Button("Remove role");
 
-        // log area
-        ListView<String> logView = new ListView<>();
-        logView.setPrefHeight(180);
+        TextArea logArea = new TextArea();
+        logArea.setEditable(false);
+        logArea.setPrefRowCount(8);
 
-        // Assign role logic
         assignBtn.setOnAction(e -> {
-            String userId = userIdField.getText().trim();
-            String role = roleBox.getValue();
-
-            if (userId.isEmpty()) {
-                logView.getItems().add("Please enter a user ID before assigning.");
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                logArea.appendText("Please enter a user ID before assigning.\n");
                 return;
             }
 
-            String previous = assignedRoles.put(userId, role);
+            String newRole = roleBox.getValue();
+            String oldRole = userRoles.get(id);
 
-            if (previous == null) {
-                logView.getItems().add("Assigned role " + role + " to user " + userId + " (mock).");
-            } else if (previous.equals(role)) {
-                logView.getItems().add("User " + userId + " already had role " + role + " (no change).");
+            if (oldRole == null) {
+                userRoles.put(id, newRole);
+                logArea.appendText("Assigned role " + newRole + " to user " + id + " (mock).\n");
+            } else if (oldRole.equals(newRole)) {
+                logArea.appendText("User " + id + " already had role " + newRole + " (no change).\n");
             } else {
-                logView.getItems().add("Changed role for user " + userId +
-                        " from " + previous + " to " + role + " (mock).");
+                userRoles.put(id, newRole);
+                logArea.appendText("Changed role for user " + id + " from " + oldRole + " to " + newRole + " (mock).\n");
             }
         });
 
-        // Remove role logic
         removeBtn.setOnAction(e -> {
-            String userId = userIdField.getText().trim();
-
-            if (userId.isEmpty()) {
-                logView.getItems().add("Please enter a user ID before removing.");
+            String id = userIdField.getText().trim();
+            if (id.isEmpty()) {
+                logArea.appendText("Please enter a user ID before removing.\n");
                 return;
             }
 
-            String previous = assignedRoles.remove(userId);
-
-            if (previous == null) {
-                logView.getItems().add("User " + userId + " had no role assigned (nothing to remove).");
+            String removed = userRoles.remove(id);
+            if (removed == null) {
+                logArea.appendText("User " + id + " had no role assigned (nothing to remove).\n");
             } else {
-                logView.getItems().add("Removed role " + previous + " from user " + userId + " (mock).");
+                logArea.appendText("Removed role " + removed + " from user " + id + " (mock).\n");
             }
         });
 
-        Button back = new Button("Back");
-        back.setOnAction(e -> showRoleSelection(stage));
+        GridPane form = new GridPane();
+        form.setHgap(10);
+        form.setVgap(10);
 
-        HBox buttonRow = new HBox(10, assignBtn, removeBtn);
-        buttonRow.setAlignment(Pos.CENTER_LEFT);
+        form.add(new Label("User ID:"), 0, 0);
+        form.add(userIdField, 1, 0);
 
-        VBox center = new VBox(10,
-                formRow1,
-                formRow2,
-                buttonRow,
+        form.add(new Label("Role:"), 0, 1);
+        form.add(roleBox, 1, 1);
+
+        HBox buttons = new HBox(8, assignBtn, removeBtn);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+
+        VBox root = new VBox(10, title, form, buttons,
                 new Label("Activity log (mock actions only):"),
-                logView
-        );
-        center.setPadding(new Insets(10, 0, 0, 0));
+                logArea);
 
-        BorderPane root = new BorderPane();
         root.setPadding(new Insets(15));
-        root.setTop(title);
-        BorderPane.setAlignment(title, Pos.CENTER);
-        root.setCenter(center);
+        root.setAlignment(Pos.TOP_LEFT);
 
-        HBox bottom = new HBox(10, back);
-        bottom.setAlignment(Pos.CENTER_LEFT);
-        bottom.setPadding(new Insets(10, 0, 0, 0));
-        root.setBottom(bottom);
+        Button backBtn = new Button("Back");
+        backBtn.setOnAction(e -> showRoleSelection(stage));
+        root.getChildren().add(backBtn);
 
-        Scene scene = new Scene(root, 600, 380);
-        stage.setScene(scene);
+        stage.setScene(new Scene(root, 640, 420));
     }
 
-    // -------------------- shared helpers --------------------
-
-    /** Create the three-column table used by both customer & teller. */
-    private TableView<AccountRow> createAccountTable() {
+    // ----------------------------
+    // Helpers
+    // ----------------------------
+    private TableView<AccountRow> buildAccountTable(boolean fullBalances) {
         TableView<AccountRow> table = new TableView<>();
 
         TableColumn<AccountRow, String> idCol = new TableColumn<>("Account ID");
@@ -280,9 +293,8 @@ public class MyBankApp extends Application {
         balCol.setCellValueFactory(new PropertyValueFactory<>("balanceDisplay"));
         balCol.setPrefWidth(150);
 
-        table.getColumns().add(idCol);
-        table.getColumns().add(typeCol);
-        table.getColumns().add(balCol);
+        table.getColumns().addAll(idCol, typeCol, balCol);
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
         return table;
     }
