@@ -13,6 +13,7 @@ public class Main {
                 config.getAccountViewController(),
                 config.getSearchController(),
                 config.getRoleAdminController());
+        MyBankApp.setRoleRepository(config.getRoleRepository());
         Application.launch(MyBankApp.class, args);
     }
 }

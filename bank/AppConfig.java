@@ -58,4 +58,8 @@ public class AppConfig {
     public RoleAdminController getRoleAdminController() {
         return roleAdminController;
     }
+
+    public RoleRepository getRoleRepository() {
+        return roleRepository;
+    }
 }
